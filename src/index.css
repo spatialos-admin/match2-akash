@@ -20,6 +20,8 @@ body {
   min-height: 100vh;
   background: radial-gradient(circle at top, #1f1c2c 0%, #0c0b16 55%, #050509 100%);
   color: #fff;
+  overflow: hidden;
+  padding-top: 20px;
 }
 
 #root {

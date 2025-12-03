@@ -12,7 +12,6 @@ import cardImg10 from './assets/cards/Back Card - 10.png'
 import cardImg11 from './assets/cards/Back Card - 11.png'
 import cardImg12 from './assets/cards/Back Card - 12.png'
 import cardImg13 from './assets/cards/Back Card - 13.png'
-import frontCard1 from './assets/cards/Front Card - 1.png'
 import frontCard2 from './assets/cards/Front Card - 2.png'
 import blankCard from './assets/cards/Front Card - 3.png'
 import MemoryCard from './components/MemoryCard'
@@ -42,7 +41,7 @@ const BLANK_REWARDS = Array.from({ length: BLANK_PAIRS }, (_, index) => ({
   isMystery: true,
 }))
 const CARD_REWARDS = [...BASE_REWARDS, ...BLANK_REWARDS]
-const FRONT_FACES = [frontCard1, frontCard2]
+const FRONT_FACES = [frontCard2]
 
 const TOTAL_CARDS = 20
 const MATCHABLE_PAIR_TARGET = 10
@@ -54,8 +53,6 @@ if (MATCHABLE_PAIR_TARGET * 2 > TOTAL_CARDS) {
 if (MATCHABLE_PAIR_TARGET > BASE_REWARDS.length) {
   throw new Error('Not enough reward images to satisfy the requested deck configuration.')
 }
-
-const BEST_TIME_STORAGE_KEY = 'match2-best-time'
 
 const shuffleDeck = (cards) => {
   const stack = [...cards]
@@ -94,17 +91,6 @@ const buildDeck = () => {
   return shuffleDeck(pairCards)
 }
 
-const readBestTime = () => {
-  if (typeof window === 'undefined') return null
-  const stored = window.localStorage.getItem(BEST_TIME_STORAGE_KEY)
-  return stored ? Number(stored) : null
-}
-
-const writeBestTime = (value) => {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(BEST_TIME_STORAGE_KEY, String(value))
-}
-
 const formatTime = (totalSeconds) => {
   const safeSeconds = Number.isFinite(totalSeconds) ? totalSeconds : 0
   const minutes = Math.floor(safeSeconds / 60)
@@ -112,25 +98,30 @@ const formatTime = (totalSeconds) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
+const INITIAL_SECONDS = 120
+
 function App() {
   const [cards, setCards] = useState(() => buildDeck())
   const [flippedIds, setFlippedIds] = useState([])
   const [moves, setMoves] = useState(0)
   const [matches, setMatches] = useState(0)
-  const [secondsElapsed, setSecondsElapsed] = useState(0)
+  const [secondsRemaining, setSecondsRemaining] = useState(INITIAL_SECONDS)
   const [isRunning, setIsRunning] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
   const [hasWon, setHasWon] = useState(false)
-  const [bestTime, setBestTime] = useState(() => readBestTime())
   const [hasStarted, setHasStarted] = useState(false)
 
   useEffect(() => {
-    if (!isRunning) return undefined
+    if (!isRunning || hasWon) return undefined
+    if (secondsRemaining <= 0) {
+      setIsRunning(false)
+      return undefined
+    }
     const timerId = setInterval(() => {
-      setSecondsElapsed((prev) => prev + 1)
+      setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
     return () => clearInterval(timerId)
-  }, [isRunning])
+  }, [isRunning, hasWon, secondsRemaining])
 
   useEffect(() => {
     if (matches === MATCHABLE_PAIR_TARGET) {
@@ -140,15 +131,11 @@ function App() {
   }, [matches])
 
   useEffect(() => {
-    if (!hasWon) return
-    setBestTime((prev) => {
-      if (prev === null || secondsElapsed < prev) {
-        writeBestTime(secondsElapsed)
-        return secondsElapsed
-      }
-      return prev
-    })
-  }, [hasWon, secondsElapsed])
+    if (hasStarted) {
+      setSecondsRemaining(INITIAL_SECONDS)
+      setIsRunning(true)
+    }
+  }, [hasStarted])
 
   const evaluatePair = (pairIds) => {
     setIsBusy(true)
@@ -188,10 +175,6 @@ function App() {
     const targetCard = cards.find((card) => card.id === cardId)
     if (!targetCard || targetCard.isFlipped || targetCard.isMatched) return
 
-    if (!isRunning) {
-      setIsRunning(true)
-    }
-
     const updatedDeck = cards.map((card) =>
       card.id === cardId ? { ...card, isFlipped: true } : card,
     )
@@ -210,15 +193,16 @@ function App() {
     setFlippedIds([])
     setMoves(0)
     setMatches(0)
-    setSecondsElapsed(0)
-    setIsRunning(false)
+    setSecondsRemaining(INITIAL_SECONDS)
+    setIsRunning(true)
     setIsBusy(false)
     setHasWon(false)
   }
 
-  const timerLabel = formatTime(secondsElapsed)
-  const bestTimeLabel = bestTime !== null ? formatTime(bestTime) : '—'
-  const pairsRemaining = Math.max(MATCHABLE_PAIR_TARGET - matches, 0)
+  const forceFinishGame = () => {
+  }
+
+  const timerLabel = formatTime(secondsRemaining)
 
   if (!hasStarted) {
     return (
@@ -265,42 +249,30 @@ function App() {
   return (
     <div className="app">
       {hasWon && <Confetti />}
-      <header className="app__header">
-        <div>
-          <p className="eyebrow">Match 2</p>
-          <h1>Flip cards, find pairs, keep your streak alive.</h1>
-        </div>
-        <p className="lede">
-          Reveal two cards at a time and memorize their positions. Match all{' '}
-          {MATCHABLE_PAIR_TARGET} pairs as quickly and efficiently as you can.
-        </p>
-      </header>
 
-      <section className="status-panel">
-        <div className="stat">
-          <p className="stat__label">Moves</p>
-          <p className="stat__value">{moves}</p>
+      <section className="status-row">
+        <div className="status-row__item">
+          <span className="status-row__label">Moves</span>
+          <span className="status-row__value">{moves}</span>
         </div>
-        <div className="stat">
-          <p className="stat__label">Matches</p>
-          <p className="stat__value">
+        <div className="status-row__item status-row__item--right">
+          <span className="status-row__label">Time</span>
+          <span className="status-row__value">{timerLabel}</span>
+        </div>
+      </section>
+
+      <section className="progress">
+        <div className="progress__header">
+          <span className="progress__label">Matches</span>
+          <span className="progress__hint">
             {matches}/{MATCHABLE_PAIR_TARGET}
-          </p>
-          <p className="stat__hint">
-            {pairsRemaining > 0
-              ? `${pairsRemaining} pairs left`
-              : `All ${MATCHABLE_PAIR_TARGET} pairs found`}
-          </p>
+          </span>
         </div>
-        <div className="stat">
-          <p className="stat__label">Time</p>
-          <p className="stat__value">{timerLabel}</p>
-          <p className="stat__hint">Best: {bestTimeLabel}</p>
-        </div>
-        <div className="stat stat--actions">
-          <button type="button" onClick={startNewGame} className="primary-btn">
-            New game
-          </button>
+        <div className="progress__track">
+          <div
+            className="progress__fill"
+            style={{ width: `${Math.min(100, (matches / MATCHABLE_PAIR_TARGET) * 100)}%` }}
+          />
         </div>
       </section>
 
@@ -316,23 +288,18 @@ function App() {
       </section>
 
       {hasWon && (
-        <section className="win-banner">
-          <div>
-            <p className="eyebrow">You did it!</p>
-            <h2>Perfect memory unlocked.</h2>
-            <p>
-              {`All pairs matched in ${moves} moves and ${timerLabel}. `}
-              {bestTime !== null && secondsElapsed === bestTime
-                ? 'New personal best!'
-                : bestTime !== null
-                  ? `Best run: ${bestTimeLabel}.`
-                  : ''}
-            </p>
-          </div>
-          <button type="button" onClick={startNewGame} className="secondary-btn">
-            Play again
-          </button>
-        </section>
+        <div className="win-overlay" role="dialog" aria-modal="true">
+          <section className="win-banner">
+            <div>
+              <p className="eyebrow">You did it!</p>
+              <h2>Perfect memory unlocked.</h2>
+              <p>{`All pairs matched in ${moves} moves with ${timerLabel} left on the clock.`}</p>
+            </div>
+            <button type="button" onClick={startNewGame} className="secondary-btn">
+              Play again
+            </button>
+          </section>
+        </div>
       )}
     </div>
   )
