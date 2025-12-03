@@ -16,6 +16,7 @@ import frontCard1 from './assets/cards/Front Card - 1.png'
 import frontCard2 from './assets/cards/Front Card - 2.png'
 import blankCard from './assets/cards/Front Card - 3.png'
 import MemoryCard from './components/MemoryCard'
+import Confetti from './components/Confetti'
 import './App.css'
 
 const BASE_REWARDS = [
@@ -121,6 +122,7 @@ function App() {
   const [isBusy, setIsBusy] = useState(false)
   const [hasWon, setHasWon] = useState(false)
   const [bestTime, setBestTime] = useState(() => readBestTime())
+  const [hasStarted, setHasStarted] = useState(false)
 
   useEffect(() => {
     if (!isRunning) return undefined
@@ -218,8 +220,51 @@ function App() {
   const bestTimeLabel = bestTime !== null ? formatTime(bestTime) : '—'
   const pairsRemaining = Math.max(MATCHABLE_PAIR_TARGET - matches, 0)
 
+  if (!hasStarted) {
+    return (
+      <div className="app app--intro">
+        <header className="app__header">
+          <div>
+            <p className="eyebrow">Match 2</p>
+            <h1>Flip, remember, and chase your best score.</h1>
+          </div>
+          <p className="lede">
+            You&apos;ll see {TOTAL_CARDS} cards face down. Tap any two cards to flip them. If they
+            show the same reward, they stay revealed. Otherwise, they flip back over.
+          </p>
+        </header>
+
+        <section className="intro-panel">
+          <div className="intro-panel__rules">
+            <h2>How to play</h2>
+            <ol>
+              <li>Tap a card to reveal the reward.</li>
+              <li>Tap a second card to try to find its pair.</li>
+              <li>Matched pairs stay face up; non-matches flip back.</li>
+              <li>Clear all {MATCHABLE_PAIR_TARGET} pairs using as few moves as possible.</li>
+            </ol>
+          </div>
+          <div className="intro-panel__cta">
+            <p className="intro-panel__hint">
+              Pro tip: watch the timer and track your moves — matching faster and cleaner sets a new
+              personal best.
+            </p>
+            <button
+              type="button"
+              className="primary-btn intro-panel__button"
+              onClick={() => setHasStarted(true)}
+            >
+              Start game
+            </button>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
   return (
     <div className="app">
+      {hasWon && <Confetti />}
       <header className="app__header">
         <div>
           <p className="eyebrow">Match 2</p>
