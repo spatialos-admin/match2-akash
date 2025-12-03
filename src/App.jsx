@@ -263,7 +263,7 @@ function App() {
 
       <section className="progress">
         <div className="progress__header">
-          <span className="progress__label">Matches</span>
+          <span className="progress__label">Pairs</span>
           <span className="progress__hint">
             {matches}/{MATCHABLE_PAIR_TARGET}
           </span>
