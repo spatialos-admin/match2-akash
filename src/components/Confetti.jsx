@@ -1,10 +1,14 @@
-const CONFETTI_PIECES = 80
+import Lottie from 'lottie-react'
+import confettiAnimation from '../assets/animations/Confetti-Animation.json'
 
 const Confetti = () => (
   <div className="confetti">
-    {Array.from({ length: CONFETTI_PIECES }).map((_, index) => (
-      <span key={index} className="confetti__piece" />
-    ))}
+    <Lottie
+      animationData={confettiAnimation}
+      loop={false}
+      autoplay={true}
+      style={{ width: '100%', height: '100%' }}
+    />
   </div>
 )
 
